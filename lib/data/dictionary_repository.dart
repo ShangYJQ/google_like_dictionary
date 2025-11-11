@@ -13,7 +13,6 @@ class DictionaryRepository {
     : _bundle = bundle ?? rootBundle,
       // csv 解析器
       _converter = const CsvToListConverter(
-        eol: '\n',
         shouldParseNumbers: false,
       );
 
