@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 
 import '../../data/dictionary_repository.dart';
 import '../../models/word_entry.dart';
+import '../../data_structures/avl.dart';
 
 /// 连接 UI 与数据层的核心控制器。
 ///
 /// 负责管理词典数据的完整生命周期：首次启动时加载 CSV，维护 loading/错误状态、
 /// 筛选后的结果集，并对输入进行节流，保证搜索体验顺畅。
+enum SearchStrategy { linear, avl }
 class DictionaryController extends ChangeNotifier {
   DictionaryController(this._repository);
 
@@ -25,6 +27,8 @@ class DictionaryController extends ChangeNotifier {
   String _query = '';
   Timer? _debounce;
   Duration? _lastSearchDuration;
+  SearchStrategy _strategy = SearchStrategy.linear;
+  AvlMap<String, WordEntry>? _avl;
 
   bool get isLoading => _isLoading;
 
@@ -37,6 +41,7 @@ class DictionaryController extends ChangeNotifier {
   int get totalEntries => _entries.length;
 
   Duration? get lastSearchDuration => _lastSearchDuration;
+  SearchStrategy get strategy => _strategy;
 
   /// 首次加载词典数据并在完成后通知监听者。
   ///
@@ -49,6 +54,7 @@ class DictionaryController extends ChangeNotifier {
       _entries
         ..clear()
         ..addAll(entries);
+      _buildAvlIndex();
       _applyFilter();
       _error = null;
     } catch (error, stackTrace) {
@@ -67,6 +73,7 @@ class DictionaryController extends ChangeNotifier {
       _entries
         ..clear()
         ..addAll(entries);
+      _buildAvlIndex();
       _applyFilter();
       _error = null;
     } catch (error, stackTrace) {
@@ -91,6 +98,21 @@ class DictionaryController extends ChangeNotifier {
     _applyFilter();
   }
 
+  void setStrategy(SearchStrategy strategy) {
+    if (_strategy == strategy) return;
+    _strategy = strategy;
+    _applyFilter();
+  }
+
+  void _buildAvlIndex() {
+    final map = AvlMap<String, WordEntry>(compare: (a, b) => a.compareTo(b));
+    for (final e in _entries) {
+      final key = e.word.toLowerCase();
+      map.insert(key, e);
+    }
+    _avl = map;
+  }
+
   /// 根据 [_query] 计算 [_visibleEntries]。
   ///
   /// - 数据未加载完成时返回空列表；
@@ -107,28 +129,55 @@ class DictionaryController extends ChangeNotifier {
       final sw = Stopwatch()..start();
       final lowerQuery = _query.toLowerCase();
 
-      int rank(WordEntry e) {
-        final w = e.word.toLowerCase();
-        final t = e.translation.toLowerCase();
-        if (w == lowerQuery) return 0;
-        if (w.startsWith(lowerQuery)) return 1;
-        if (w.contains(lowerQuery)) return 2;
-        if (t == lowerQuery) return 3;
-        if (t.startsWith(lowerQuery)) return 4;
-        return 5;
-      }
+      if (_strategy == SearchStrategy.linear) {
+        int rank(WordEntry e) {
+          final w = e.word.toLowerCase();
+          final t = e.translation.toLowerCase();
+          if (w == lowerQuery) return 0;
+          if (w.startsWith(lowerQuery)) return 1;
+          if (w.contains(lowerQuery)) return 2;
+          if (t == lowerQuery) return 3;
+          if (t.startsWith(lowerQuery)) return 4;
+          return 5;
+        }
 
-      final filtered = _entries.where((e) => e.matches(lowerQuery)).toList();
-      filtered.sort((a, b) {
-        final ra = rank(a);
-        final rb = rank(b);
-        final cmp = ra.compareTo(rb);
-        if (cmp != 0) return cmp;
-        final lenCmp = a.word.length.compareTo(b.word.length);
-        if (lenCmp != 0) return lenCmp;
-        return a.word.toLowerCase().compareTo(b.word.toLowerCase());
-      });
-      _visibleEntries = filtered.take(150).toList(growable: false);
+        final filtered = _entries.where((e) => e.matches(lowerQuery)).toList();
+        filtered.sort((a, b) {
+          final ra = rank(a);
+          final rb = rank(b);
+          final cmp = ra.compareTo(rb);
+          if (cmp != 0) return cmp;
+          final lenCmp = a.word.length.compareTo(b.word.length);
+          if (lenCmp != 0) return lenCmp;
+          return a.word.toLowerCase().compareTo(b.word.toLowerCase());
+        });
+        _visibleEntries = filtered.take(150).toList(growable: false);
+      } else {
+        final index = _avl;
+        if (index == null) {
+          _visibleEntries = const [];
+        } else {
+          final high = '$lowerQuery\uffff';
+          final results = <WordEntry>[];
+          index.forEachInRange(lowerQuery, high, (k, vs) {
+            if (k.startsWith(lowerQuery)) {
+              results.addAll(vs);
+            }
+          });
+          results.sort((a, b) {
+            final wa = a.word.toLowerCase();
+            final wb = b.word.toLowerCase();
+            final ea = wa == lowerQuery ? 0 : (wa.startsWith(lowerQuery) ? 1 : 2);
+            final eb = wb == lowerQuery ? 0 : (wb.startsWith(lowerQuery) ? 1 : 2);
+            final cmp = ea.compareTo(eb);
+            if (cmp != 0) return cmp;
+            final lenCmp = wa.length.compareTo(wb.length);
+            if (lenCmp != 0) return lenCmp;
+            return wa.compareTo(wb);
+          });
+          _visibleEntries = results.take(150).toList(growable: false);
+        }
+      }
       sw.stop();
       _lastSearchDuration = sw.elapsed;
     }
