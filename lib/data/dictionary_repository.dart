@@ -12,9 +12,7 @@ class DictionaryRepository {
   DictionaryRepository({AssetBundle? bundle})
     : _bundle = bundle ?? rootBundle,
       // csv 解析器
-      _converter = const CsvToListConverter(
-        shouldParseNumbers: false,
-      );
+      _converter = const CsvToListConverter(shouldParseNumbers: false);
 
   /// 用于读取静态资源的 bundle，测试时可替换。
   final AssetBundle _bundle;
@@ -32,15 +30,19 @@ class DictionaryRepository {
     }
 
     final raw = await _bundle.loadString('assets/data/EnWords.csv');
-    final rows = _converter.convert(raw);
+    final rows = _converter.convert(raw, eol: '\n');
 
     final entries = <WordEntry>[];
     for (var i = 0; i < rows.length; i++) {
       final row = rows[i];
-      if (i == 0 && row.isNotEmpty && row.first == 'word') {
-        continue; // 跳过表头
-      }
       if (row.isEmpty) continue;
+      if (row.length >= 2) {
+        final first = (row[0] ?? '').toString().trim().toLowerCase();
+        final second = (row[1] ?? '').toString().trim().toLowerCase();
+        if (first == 'word' && second == 'translation') {
+          continue; // 跳过表头
+        }
+      }
       try {
         final entry = WordEntry.fromCsvRow(row);
         if (entry.word.isEmpty || entry.translation.isEmpty) continue;
