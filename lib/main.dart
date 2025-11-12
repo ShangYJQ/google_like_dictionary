@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/material.dart'; // 核心 UI 组件库（Scaffold、Theme 等）
+import 'package:flutter/services.dart'; // 系统服务（剪贴板 Clipboard 等）
+import 'package:flutter_svg/flutter_svg.dart'; // 渲染 SVG 资源
 
-import 'data/dictionary_repository.dart';
-import 'features/dictionary/dictionary_controller.dart';
-import 'models/word_entry.dart';
+import 'data/dictionary_repository.dart'; // 数据加载与缓存
+import 'features/dictionary/dictionary_controller.dart'; // 控制器：驱动 UI 状态
+import 'models/word_entry.dart'; // 词条数据模型
 
 /// Flutter 程序入口：负责挂载根 Widget。
 void main() {
@@ -18,27 +18,27 @@ class DictionaryApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF838383),
-      brightness: Brightness.dark,
+      seedColor: const Color(0xFF838383), // 从种子色生成色板
+      brightness: Brightness.dark, // 深色主题
     );
 
     // MaterialApp 管理导航、主题与根页面。
     return MaterialApp(
-      title: '英汉词典',
-      debugShowCheckedModeBanner: false,
+      title: '英汉词典', // 应用标题
+      debugShowCheckedModeBanner: false, // 关闭右上角 DEBUG 横幅
       theme: ThemeData(
-        colorScheme: colorScheme,
-        useMaterial3: true,
+        colorScheme: colorScheme, // 全局配色
+        useMaterial3: true, // 使用 Material 3 组件风格
         inputDecorationTheme: const InputDecorationTheme(
-          border: InputBorder.none,
+          border: InputBorder.none, // 去除 TextField 默认下边框
         ),
         snackBarTheme: SnackBarThemeData(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0x612F2F2F),
-          contentTextStyle: TextStyle(color: Colors.amber),
+          behavior: SnackBarBehavior.floating, // 悬浮样式避免遮挡
+          backgroundColor: const Color(0x612F2F2F), // 半透明底色
+          contentTextStyle: TextStyle(color: Colors.amber), // 提示文字色
         ),
       ),
-      home: const DictionaryHomePage(),
+      home: const DictionaryHomePage(), // 根页面
     );
   }
 }
@@ -80,12 +80,14 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: AnimatedBuilder(
-          animation: _controller,
+          animation: _controller, // 监听控制器状态变化
           builder: (context, _) {
             if (_controller.isLoading) {
+              // 加载中：显示进度指示器
               return const Center(child: CircularProgressIndicator());
             }
             if (_controller.errorMessage != null) {
+              // 错误态：展示重试入口
               // 加载失败时渲染错误态，并允许用户重试。
               return _ErrorState(
                 message: _controller.errorMessage!,
@@ -98,13 +100,13 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
                   padding: const EdgeInsets.only(top: 64),
                   child: Center(
                     child: GestureDetector(
-                      onTap: _showStrategyPicker,
+                      onTap: _showStrategyPicker, // 点击 Logo 选择搜索算法
                       child: SvgPicture.asset(
-                        'assets/images/google.svg',
-                        height: 96,
+                        'assets/images/google.svg', // Google 风格 Logo
+                        height: 96, // 尺寸
                         colorFilter: ColorFilter.mode(
-                          Theme.of(context).colorScheme.primary,
-                          BlendMode.srcIn,
+                          Theme.of(context).colorScheme.primary, // 着色为主题主色
+                          BlendMode.srcIn, // 仅替换前景色
                         ),
                       ),
                     ),
@@ -118,15 +120,15 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
                   child: _SearchField(
                     controller: _searchController,
                     focusNode: _searchFocusNode,
-                    onChanged: _controller.updateQuery,
-                    onSubmitted: (_) => _searchFocusNode.unfocus(),
+                    onChanged: _controller.updateQuery, // 输入变更：节流后筛选
+                    onSubmitted: (_) => _searchFocusNode.unfocus(), // 提交后收起键盘
                   ),
                 ),
                 _StatusBanner(
                   query: _controller.query,
                   visibleCount: _controller.visibleEntries.length,
                   totalCount: _controller.totalEntries,
-                  searchDuration: _controller.lastSearchDuration,
+                  searchDuration: _controller.lastSearchDuration, // 最近一次搜索耗时
                 ),
                 const SizedBox(height: 10),
                 Expanded(
@@ -134,8 +136,10 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
                     entries: _controller.visibleEntries,
                     query: _controller.query,
                     onRefresh: _controller.refresh,
+                    // 下拉刷新重新加载词库
                     onTapEntry: _showEntryDetails,
-                    onCopy: _copyEntry,
+                    // 点击项查看详情
+                    onCopy: _copyEntry, // 快捷复制
                   ),
                 ),
               ],
