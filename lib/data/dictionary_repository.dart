@@ -30,7 +30,7 @@ class DictionaryRepository {
     }
 
     final raw = await _bundle.loadString('assets/data/EnWords.csv');
-    final rows = _converter.convert(raw, eol: '\n');
+    final rows = _converter.convert(raw);
 
     final entries = <WordEntry>[];
     for (var i = 0; i < rows.length; i++) {
