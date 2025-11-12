@@ -147,9 +147,20 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
       ClipboardData(text: '${entry.word}\n${entry.translation}'),
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('已复制 ${entry.word}')));
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: const Text('提示'),
+        content: Text('已复制 ${entry.word}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showEntryDetails(WordEntry entry) {
