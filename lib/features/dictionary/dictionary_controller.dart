@@ -24,6 +24,7 @@ class DictionaryController extends ChangeNotifier {
   String? _error;
   String _query = '';
   Timer? _debounce;
+  Duration? _lastSearchDuration;
 
   bool get isLoading => _isLoading;
 
@@ -34,6 +35,8 @@ class DictionaryController extends ChangeNotifier {
   List<WordEntry> get visibleEntries => _visibleEntries;
 
   int get totalEntries => _entries.length;
+
+  Duration? get lastSearchDuration => _lastSearchDuration;
 
   /// 首次加载词典数据并在完成后通知监听者。
   ///
@@ -96,9 +99,12 @@ class DictionaryController extends ChangeNotifier {
   void _applyFilter() {
     if (_entries.isEmpty) {
       _visibleEntries = const [];
+      _lastSearchDuration = null;
     } else if (_query.isEmpty) {
       _visibleEntries = _entries.take(50).toList(growable: false);
+      _lastSearchDuration = null;
     } else {
+      final sw = Stopwatch()..start();
       final lowerQuery = _query.toLowerCase();
 
       int rank(WordEntry e) {
@@ -123,6 +129,8 @@ class DictionaryController extends ChangeNotifier {
         return a.word.toLowerCase().compareTo(b.word.toLowerCase());
       });
       _visibleEntries = filtered.take(150).toList(growable: false);
+      sw.stop();
+      _lastSearchDuration = sw.elapsed;
     }
     notifyListeners();
   }

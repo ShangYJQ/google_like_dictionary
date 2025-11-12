@@ -123,6 +123,7 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
                   query: _controller.query,
                   visibleCount: _controller.visibleEntries.length,
                   totalCount: _controller.totalEntries,
+                  searchDuration: _controller.lastSearchDuration,
                 ),
                 const SizedBox(height: 10),
                 Expanded(
@@ -257,17 +258,25 @@ class _StatusBanner extends StatelessWidget {
     required this.query,
     required this.visibleCount,
     required this.totalCount,
+    required this.searchDuration,
   });
 
   final String query;
   final int visibleCount;
   final int totalCount;
+  final Duration? searchDuration;
 
   @override
   Widget build(BuildContext context) {
     final text = query.isEmpty
         ? '共收录 $totalCount 个词条'
         : '找到 $visibleCount 个匹配项';
+
+    String? timeText;
+    if (query.isNotEmpty && searchDuration != null) {
+      final ms = searchDuration!.inMilliseconds;
+      timeText = ms < 1000 ? '$ms ms' : '${(ms / 1000).toStringAsFixed(2)} s';
+    }
     // 状态条提供当前搜索结果的即时反馈。
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -279,7 +288,10 @@ class _StatusBanner extends StatelessWidget {
             color: Theme.of(context).colorScheme.primary,
           ),
           const SizedBox(width: 6),
-          Text(text, style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            timeText == null ? text : '$text · 用时 $timeText',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ],
       ),
     );
